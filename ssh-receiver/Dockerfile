@@ -1,6 +1,6 @@
 FROM alpine:3.22
 
-RUN apk add --no-cache openssh darkhttpd zip
+RUN apk add --no-cache openssh darkhttpd zip curl
 RUN mkdir -p /openvpn-share
 
 ENV SSH_USER=""

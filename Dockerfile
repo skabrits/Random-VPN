@@ -24,15 +24,8 @@ RUN pip install -r requirements.txt
 
 COPY main.py .
 
-ENV SSH_USER=""
-ENV SSH_PASS=""
-ENV SSH_PORT=""
-ENV PROXY_END_PORT=""
-ENV OVPN_END_PORT=""
-ENV SSH_DOMEN=""
-ENV PROXY_USER=""
-ENV PROXY_PASSWORD=""
-ENV ENDPOINT=""
+ENV SE="false"
+
 ENV CORE_IMAGE="skabrits/random-proxy"
 ENV CORE_VERSION="3.0.0"
 ENV LOG_LEVEL="INFO"

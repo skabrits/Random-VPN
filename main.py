@@ -1,4 +1,5 @@
 import os
+import re
 import base64
 import random
 import logging
@@ -25,8 +26,18 @@ ssh_domen = os.getenv("SSH_DOMEN")
 proxy_user = os.getenv("PROXY_USER")
 proxy_password = os.getenv("PROXY_PASSWORD")
 endpoint = os.getenv("ENDPOINT")
+
+se = os.getenv("SE", 'False').lower() in ('true', '1', 't')
+email_user = os.getenv("EMAIL_USER")
+email_password = os.getenv("EMAIL_PASSWORD")
+imap_server = os.getenv("IMAP_SERVER")
+msg_count = os.getenv("MSG_COUNT")
+header_regex_pattern = os.getenv("HEADER_REGEX_PATTERN")
+regex_pattern = os.getenv("REGEX_PATTERN")
+
 core_image = os.getenv("CORE_IMAGE", "skabrits/random-proxy")
-core_version = os.getenv("CORE_VERSION", "2.0.0")
+core_version = os.getenv("CORE_VERSION", "latest")
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -97,6 +108,9 @@ try:
     logger.debug("Pressed next.")
 
     # Находим поле ввода пароля и вводим пароль
+    user_field = wait.until(EC.presence_of_element_located(
+        (By.NAME, "password"))
+    )
     password_field = driver.find_element(By.NAME, "password")
     logger.debug("Found password.")
 
@@ -136,7 +150,24 @@ try:
     terminal_input = terminal_container.find_element(By.TAG_NAME, "textarea")
     sleep(10 + random.randint(1, 2))
     # Вводим Docker-команду для запуска Nginx и нажимаем Enter
-    command = f"docker run --name test -d -e PROXY_USER=\"{proxy_user}\" -e PROXY_PASSWORD=\"{proxy_password}\" -e SSH_USER=\"{ssh_user}\" -e SSH_PASS=\"{ssh_password}\" -e SSH_PORT=\"{ssh_port}\" -e PROXY_END_PORT=\"{proxy_end_port}\" -e OVPN_END_PORT=\"{ovpn_end_port}\" -e ENDPOINT=\"{endpoint}\" -e SSH_DOMEN=\"{ssh_domen}\" {core_image}:{core_version}"
+    envs = {
+        "PROXY_USER": proxy_user,
+        "PROXY_PASSWORD": proxy_password,
+        "SSH_USER": ssh_user,
+        "SSH_PASS": ssh_password,
+        "SSH_PORT": ssh_port,
+        "PROXY_END_PORT": proxy_end_port,
+        "OVPN_END_PORT": ovpn_end_port,
+        "EMAIL_USER": email_user,
+        "EMAIL_PASSWORD": email_password,
+        "IMAP_SERVER": imap_server,
+        "MSG_COUNT": msg_count,
+        "HEADER_REGEX_PATTERN": header_regex_pattern,
+        "REGEX_PATTERN": regex_pattern,
+        "ENDPOINT": endpoint,
+        "SSH_DOMEN": ssh_domen,
+    }
+    command = "docker run --name test -d " + "".join(f'-e {k}="{v}" ' for k, v in envs.items() if v not in (None, "")) + f"{core_image}:{core_version}"
     terminal_input.send_keys(command)
     terminal_input.send_keys(Keys.ENTER)
     logger.debug(command)
@@ -144,6 +175,64 @@ try:
     # (Опционально) можно добавить ожидание или проверку результата команды,
     # например, появление нового контейнера в списке, но PWD неявно этого не показывает в интерфейсе.
     logger.info("Команда docker run отправлена в терминал PWD.")
+    if se:
+        GRouting_RE = re.compile(r"Grouting\s+tcp://(?P<ip>(?:\d{1,3}\.){3}\d{1,3}):(?P<port>\d{1,5})")
+
+        def extract_terminal_output(timeout=20):
+            # 1) Надёжнее брать текст из accessibility-tree xterm (он в DOM как обычный текст)
+            try:
+                tree = WebDriverWait(driver, timeout).until(
+                    lambda d: d.find_element(By.CSS_SELECTOR, ".xterm-accessibility-tree")
+                )
+                txt = tree.get_attribute("innerText") or tree.text or ""
+                logger.debug(txt)
+            except Exception:
+                txt = ""
+
+            # 2) fallback: иногда хватает page_source
+            if "Grouting tcp://" not in txt:
+                src = driver.page_source
+                txt = txt + "\n" + (src or "")
+
+            return txt
+
+        def extract_grouting_addr(txt):
+            matches = list(GRouting_RE.finditer(txt))
+            if not matches:
+                return None  # не нашли
+
+            m = matches[-1]  # берём последний (самый свежий)
+            ip = m.group("ip")
+            port = int(m.group("port"))
+            return ip, port, f"tcp://{ip}:{port}"
+
+        sleep(30 + random.randint(1, 5))
+        terminal_input.send_keys("docker logs test")
+        terminal_input.send_keys(Keys.ENTER)
+        sleep(10)
+        txt = extract_terminal_output()
+        res = extract_grouting_addr(txt)
+        n_try = 0
+        while not res:
+            if n_try > 60:
+                raise TimeoutError("Failed to connect to GROUT")
+            sleep(5)
+            txt = extract_terminal_output()
+            res = extract_grouting_addr(txt)
+            logger.info(f"Failed to obtain proxy ip addr{f'(x{n_try+1})' if n_try > 1 else ''}. Retrying in 5 s...")
+            n_try += 1
+            if "waiting for email" not in txt:
+                terminal_input.send_keys("docker logs test")
+                terminal_input.send_keys(Keys.ENTER)
+            terminal_input.send_keys("docker exec test cat gout.log")
+            terminal_input.send_keys(Keys.ENTER)
+
+        ip, port, url = res
+        if proxy_user:
+            logger.info(f"Proxy: http://{proxy_user}:{proxy_password}@{ip}:{port}")
+        else:
+            logger.info(f"Proxy: http://{ip}:{port}")
+
     if LOG_LEVEL == "DEBUG":
         sleep(30 + random.randint(1, 5))
         driver.save_screenshot("screenshot.png")

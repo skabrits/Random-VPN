@@ -1,9 +1,9 @@
 FROM python:3.9
 
-RUN apt update && apt install sshpass
-RUN pip install proxy.py
+RUN pip install proxy.py paramiko
 
 WORKDIR /app
+COPY otp.py .
 COPY setup_proxy.sh .
 RUN chmod +x setup_proxy.sh
 

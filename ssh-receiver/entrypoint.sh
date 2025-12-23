@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 export SERVER_PASSWORD="${SERVER_PASSWORD:-"${SSH_USER}:${SSH_PASS}"}"
 
@@ -24,13 +24,13 @@ echo "Match User <<SSH_USER>>
     ForceCommand /bin/false
     AllowAgentForwarding no
     AllowStreamLocalForwarding no
-    PermitListen 8000,1194
+    PermitListen 8000 1194
     PermitOpen none" >> /etc/ssh/sshd_config
 sed -i "s/<<SSH_USER>>/${SSH_USER}/g" /etc/ssh/sshd_config
 
 adduser "${SSH_USER}" -D && echo "${SSH_USER}:${SSH_PASS}" | chpasswd
-ssh-keygen -A && /usr/sbin/sshd
+ssh-keygen -A
 
-( while true; do echo "[$(date)] $(curl -s -x http://localhost:8000 google.com 2>&1)" >> /config/availability.log; [ $(ls -s /config/availability.log | awk '{print $1}') -gt 20480 ] && sed -i '1d' /config/availability.log; sleep 45; done & )
+( while true; do echo "[$(date)] $(curl -s -x http://localhost:8000 google.com 2>&1)" >> /availability.log; [ $(ls -s /availability.log | awk '{print $1}') -gt 20480 ] && sed -i '1d' /availability.log; sleep 45; done & )
 
-ocserv -c /config/ocserv.conf -f
+/usr/sbin/sshd -D

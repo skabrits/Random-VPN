@@ -214,3 +214,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+error.png
+error*.png
+screenshot.png
+screenshot_logs.png
