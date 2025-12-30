@@ -5,7 +5,7 @@ Affordable VPN with little details.
 ## TL;DR
 
 ```bash
-docker run --env-file .env -d skabrits/vpnise:latest
+docker run --env-file .env skabrits/vpnise:latest
 ```
 
 **.env**
