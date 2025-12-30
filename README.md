@@ -10,7 +10,7 @@ docker run --env-file .env -d skabrits/vpnise:latest
 
 **.env**
 ```yaml
-EXPOSE_PLUGIN="exposing.py:ExposeBuiltin"
+EXPOSE_PLUGIN=exposing.py:ExposeBuiltin
 DH_USER=your-dh-user
 DH_PASSWORD=your-dh-password
 PROXY_PASSWORD=your-awsome-password
