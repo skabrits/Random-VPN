@@ -23,11 +23,10 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY main.py .
+COPY launcher.py .
+COPY exposing.py .
+COPY utils.py .
 
-ENV SE="false"
-
-ENV CORE_IMAGE="skabrits/random-proxy"
-ENV CORE_VERSION="3.0.0"
-ENV LOG_LEVEL="INFO"
+COPY sub.yaml .
 
 ENTRYPOINT ["bash", "-c", "sleep 30 && while true; do python -u main.py; echo \"cycle broken\"; sleep $(awk 'BEGIN{srand(); print rand()+1}'); done"]

@@ -1,0 +1,20 @@
+# Profile Template for Clash Verge
+
+proxies:
+  - name: "ss-ws-tls-auto"
+    type: ss
+    server: <HOST>
+    port: 80
+    cipher: <PROTO>
+    password: <PWD>
+    plugin: v2ray-plugin
+    plugin-opts:
+      mode: websocket
+      skip-cert-verify: true
+      tls: true
+      host: <HOST>
+      path: /ws
+
+proxy-groups: []
+
+rules: []
